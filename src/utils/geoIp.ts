@@ -3,10 +3,18 @@ import { Language } from '../types';
 const STORAGE_KEY = 'vwe_user_language';
 
 /**
- * Extracts language from current window pathname (/tr or /us or /en)
+ * Extracts language from URL query (?lang=tr/en/us) or legacy path (/tr, /us)
  */
 export function getLanguageFromUrl(): Language | null {
   if (typeof window === 'undefined') return null;
+
+  // 1. Check search params: ?lang=tr or ?lang=us or ?lang=en
+  const params = new URLSearchParams(window.location.search);
+  const langParam = params.get('lang')?.toLowerCase();
+  if (langParam === 'tr') return 'tr';
+  if (langParam === 'us' || langParam === 'en') return 'us';
+
+  // 2. Check path (/tr or /us or /en) if user directly navigated there
   const path = window.location.pathname.toLowerCase();
   if (path === '/tr' || path.startsWith('/tr/')) {
     return 'tr';
@@ -18,32 +26,16 @@ export function getLanguageFromUrl(): Language | null {
 }
 
 /**
- * Updates the browser URL without page reload (/tr or /us)
+ * Saves language preference and updates document meta without forcibly altering pathname
  */
 export function syncUrlWithLanguage(lang: Language, replace = false): void {
   if (typeof window === 'undefined') return;
 
+  // If URL currently contains a legacy /tr or /us prefix, normalize it back to root / cleanly
   const currentPath = window.location.pathname;
-  const search = window.location.search;
-  const hash = window.location.hash;
-
-  // Clean existing prefix
-  let targetPath = `/${lang}`;
-  if (currentPath.startsWith('/tr') || currentPath.startsWith('/us') || currentPath.startsWith('/en')) {
-    const remainder = currentPath.replace(/^\/(tr|us|en)/, '');
-    targetPath = `/${lang}${remainder}`;
-  } else if (currentPath !== '/' && currentPath !== '') {
-    targetPath = `/${lang}${currentPath}`;
-  }
-
-  const newUrl = `${targetPath}${search}${hash}`;
-
-  if (window.location.pathname !== targetPath) {
-    if (replace) {
-      window.history.replaceState({ lang }, '', newUrl);
-    } else {
-      window.history.pushState({ lang }, '', newUrl);
-    }
+  if (currentPath === '/tr' || currentPath === '/us' || currentPath === '/en') {
+    const cleanUrl = '/' + (window.location.search || '') + (window.location.hash || '');
+    window.history.replaceState({ lang }, '', cleanUrl);
   }
 
   // Update localStorage
@@ -65,9 +57,9 @@ export function updateDocumentMeta(lang: Language): void {
   document.documentElement.lang = lang === 'tr' ? 'tr' : 'en';
 
   if (lang === 'tr') {
-    document.title = 'Visual Web Studio & Editor - Canlı Kodsuz Web Düzenleyici';
+    document.title = 'ZipTrio — Canlı Kodsuz Web Düzenleyici';
   } else {
-    document.title = 'Visual Web Studio & Editor - Visual No-Code HTML/ZIP Editor';
+    document.title = 'ZipTrio — Visual No-Code HTML/ZIP Editor';
   }
 }
 

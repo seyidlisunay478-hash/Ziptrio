@@ -3,7 +3,7 @@ import { Language } from '../types';
 export const TRANSLATIONS = {
   tr: {
     // General
-    appName: 'Site Düzenleyici',
+    appName: 'ZipTrio',
     visualBadge: 'Görsel',
     preview: 'Önizleme',
     loading: 'Yükleniyor...',
@@ -184,15 +184,15 @@ export const TRANSLATIONS = {
     toastCodeApplied: 'Kod değişiklikleri canlı uygulandı',
     toastZipReady: 'ZIP arşivi indiriliyor...',
     toastHtmlReady: 'HTML dosyası indirildi',
-    toastLangTr: 'Dil Türkçe (/tr) olarak ayarlandı',
-    toastLangUs: 'Language switched to English (/us)',
-    toastIpTr: 'Konumunuz tespit edildi: Türkçe (/tr) etkinleştirildi',
-    toastIpUs: 'Location detected: English (/us) activated',
+    toastLangTr: 'Dil Türkçe olarak ayarlandı',
+    toastLangUs: 'Language switched to English',
+    toastIpTr: 'Konumunuz tespit edildi: Türkçe etkinleştirildi',
+    toastIpUs: 'Location detected: English activated',
   },
 
   us: {
     // General
-    appName: 'Site Editor',
+    appName: 'ZipTrio',
     visualBadge: 'Visual',
     preview: 'Preview',
     loading: 'Loading...',
@@ -373,10 +373,10 @@ export const TRANSLATIONS = {
     toastCodeApplied: 'Code modifications applied live',
     toastZipReady: 'Preparing ZIP download...',
     toastHtmlReady: 'HTML file exported',
-    toastLangTr: 'Dil Türkçe (/tr) olarak ayarlandı',
-    toastLangUs: 'Language switched to English (/us)',
-    toastIpTr: 'Region detected: Turkish (/tr) activated',
-    toastIpUs: 'Region detected: English (/us) activated',
+    toastLangTr: 'Dil Türkçe olarak ayarlandı',
+    toastLangUs: 'Language switched to English',
+    toastIpTr: 'Region detected: Turkish activated',
+    toastIpUs: 'Region detected: English activated',
   },
 };
 

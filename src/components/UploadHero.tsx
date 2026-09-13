@@ -51,8 +51,14 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
 
       <div className="w-full max-w-xl bg-white border border-slate-200/90 rounded-[28px] sm:rounded-[36px] shadow-xl shadow-slate-200/50 p-5 sm:p-8 md:p-10 text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200 my-auto">
         {/* Cute Glowing Icon Badge */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25 mb-4 sm:mb-6">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25 mb-4 sm:mb-5">
           <Upload className="w-8 h-8 sm:w-10 sm:h-10" />
+        </div>
+
+        {/* Brand Tag */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold tracking-wide mb-2.5">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          <span>ZipTrio</span>
         </div>
 
         {/* Title and Subtitle */}

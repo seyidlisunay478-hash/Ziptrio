@@ -1,6 +1,6 @@
 {
-  "name": "Visual Web Studio & Editor",
-  "description": "HTML ve ZIP dosyalarını ayrıştırıp canlı önizleyen, görsel öğe düzenleyicisi ve indirilebilir proje export aracı.",
+  "name": "ZipTrio",
+  "description": "Visual HTML & ZIP Website Editor. Inspect, edit styles, customize content, and export website templates in real time.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
