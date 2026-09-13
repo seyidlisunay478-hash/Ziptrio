@@ -1,0 +1,6 @@
+{
+  "name": "Visual Web Studio & Editor",
+  "description": "HTML ve ZIP dosyalarını ayrıştırıp canlı önizleyen, görsel öğe düzenleyicisi ve indirilebilir proje export aracı.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
