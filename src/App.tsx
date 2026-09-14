@@ -18,6 +18,7 @@ import {
 } from './utils/htmlParser';
 import { SAMPLE_PROJECTS } from './utils/sampleProjects';
 import { Sparkles, X, Check, Sliders, ArrowUp, ArrowDown, Copy, Trash2 } from 'lucide-react';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
   // State: whether we are on the initial upload screen or full-screen preview
@@ -576,6 +577,9 @@ export default function App() {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* PWA Offline Indicator */}
+      <OfflineIndicator />
     </div>
   );
 }

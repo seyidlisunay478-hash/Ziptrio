@@ -22,6 +22,7 @@ import { DeviceViewport, ProjectFile } from '../types';
 import { SAMPLE_PROJECTS } from '../utils/sampleProjects';
 import { useLanguage } from '../utils/LanguageContext';
 import { SUPPORTED_LANGUAGES, getLanguageMeta } from '../utils/languages';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   files: ProjectFile[];
@@ -248,8 +249,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Language Selector (28 Languages, URL routes /{code}, Country detection) */}
+      {/* Right Controls: PWA Install & Language Selector */}
       <div className="flex items-center gap-1.5 sm:gap-2">
+        <PWAInstallButton />
+
         {/* Language Selector Area */}
         <div className="relative">
           <button

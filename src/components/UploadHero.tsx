@@ -16,6 +16,7 @@ import {
 import { SAMPLE_PROJECTS } from '../utils/sampleProjects';
 import { useLanguage } from '../utils/LanguageContext';
 import { SUPPORTED_LANGUAGES, getLanguageMeta } from '../utils/languages';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface UploadHeroProps {
   onFileUpload: (file: File) => void;
@@ -81,8 +82,11 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
           )}
         </div>
 
-        {/* Language selector popover trigger */}
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          <PWAInstallButton />
+
+          {/* Language selector popover trigger */}
+          <div className="relative">
           <button
             onClick={() => setShowLangMenu(!showLangMenu)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer ${
@@ -155,6 +159,7 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
       <input
