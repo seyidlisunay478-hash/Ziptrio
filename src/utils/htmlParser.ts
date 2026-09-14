@@ -91,68 +91,236 @@ function parseCssText(
 }
 
 /**
+ * Normalizes relative path resolution against an HTML or CSS directory
+ */
+export function normalizeRelativePath(baseDir: string, relativePath: string): string {
+  const clean = relativePath.split('#')[0].split('?')[0].trim();
+  if (
+    !clean ||
+    clean.startsWith('data:') ||
+    clean.startsWith('http://') ||
+    clean.startsWith('https://') ||
+    clean.startsWith('//') ||
+    clean.startsWith('blob:')
+  ) {
+    return clean;
+  }
+
+  // If path starts with '/', treat as root of archive
+  if (clean.startsWith('/')) {
+    return clean.replace(/^\/+/, '');
+  }
+
+  const stack = baseDir.split('/').filter(Boolean);
+  const parts = clean.split('/');
+
+  for (const part of parts) {
+    if (part === '.' || part === '') {
+      continue;
+    } else if (part === '..') {
+      if (stack.length > 0) stack.pop();
+    } else {
+      stack.push(part);
+    }
+  }
+
+  return stack.join('/');
+}
+
+/**
+ * Searches for a file in the project matching a reference path
+ */
+export function findProjectFile(
+  refPath: string,
+  contextFilePath: string,
+  files: ProjectFile[]
+): ProjectFile | undefined {
+  if (
+    !refPath ||
+    refPath.startsWith('data:') ||
+    refPath.startsWith('http://') ||
+    refPath.startsWith('https://') ||
+    refPath.startsWith('//') ||
+    refPath.startsWith('blob:') ||
+    refPath.startsWith('mailto:') ||
+    refPath.startsWith('tel:') ||
+    refPath.startsWith('javascript:') ||
+    refPath.startsWith('#')
+  ) {
+    return undefined;
+  }
+
+  const cleanRef = refPath.split('#')[0].split('?')[0].trim();
+  const contextDir = contextFilePath.includes('/')
+    ? contextFilePath.slice(0, contextFilePath.lastIndexOf('/'))
+    : '';
+
+  const normalized = normalizeRelativePath(contextDir, cleanRef).toLowerCase();
+  const rawClean = cleanRef.replace(/^\.?\/+/, '').toLowerCase();
+  const fileNameOnly = cleanRef.split('/').pop()?.toLowerCase() || '';
+
+  // 1. Exact normalized path match
+  let found = files.find((f) => f.path.toLowerCase() === normalized);
+  if (found) return found;
+
+  // 2. Clean raw path match
+  found = files.find((f) => f.path.toLowerCase() === rawClean);
+  if (found) return found;
+
+  // 3. Suffix match (e.g. ref is "css/style.css", zip entry is "theme/css/style.css")
+  found = files.find(
+    (f) =>
+      f.path.toLowerCase().endsWith('/' + rawClean) ||
+      f.path.toLowerCase().endsWith('/' + normalized)
+  );
+  if (found) return found;
+
+  // 4. Exact filename match as fallback
+  found = files.find((f) => f.name.toLowerCase() === fileNameOnly);
+  if (found) return found;
+
+  return undefined;
+}
+
+/**
+ * Resolves url(...) references inside CSS text with data URLs or blob URLs from project files
+ */
+export function resolveCssUrls(
+  cssContent: string,
+  cssFilePath: string,
+  files: ProjectFile[]
+): string {
+  return cssContent.replace(
+    /url\(\s*(['"]?)(.*?)\1\s*\)/gi,
+    (fullMatch, _quote, rawUrl) => {
+      const trimmed = (rawUrl || '').trim();
+      if (
+        !trimmed ||
+        trimmed.startsWith('data:') ||
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('//') ||
+        trimmed.startsWith('blob:') ||
+        trimmed.startsWith('#')
+      ) {
+        return fullMatch;
+      }
+
+      const asset = findProjectFile(trimmed, cssFilePath, files);
+      if (asset && asset.content) {
+        return `url("${asset.content}")`;
+      }
+      return fullMatch;
+    }
+  );
+}
+
+/**
  * Prepares the HTML to be loaded in the sandbox iframe:
- * - Inlines CSS files so styles render immediately
- * - Replaces relative asset paths with data URLs / blob URLs
+ * - Inlines CSS files so styles render immediately and resolves CSS url()
+ * - Replaces relative asset paths (images, fonts, scripts) with data URLs / blob URLs
+ * - Handles internal navigation between HTML files in the zip
  * - Injects the Visual Web Editor (VWE) inspector client script
  */
-export function preparePreviewHtml(htmlContent: string, files: ProjectFile[]): string {
+export function preparePreviewHtml(
+  htmlContent: string,
+  files: ProjectFile[],
+  currentHtmlPath = 'index.html'
+): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, 'text/html');
-
-  // Map files by path for easy lookup
-  const fileMap = new Map<string, ProjectFile>();
-  for (const f of files) {
-    fileMap.set(f.path.toLowerCase(), f);
-    fileMap.set(f.name.toLowerCase(), f);
-  }
 
   // 1. Resolve CSS links: replace <link rel="stylesheet" href="..."> with inline <style>
   const linkElements = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
   for (const link of linkElements) {
     const href = link.getAttribute('href');
     if (href) {
-      const cleanHref = href.split('?')[0].replace(/^\.?\//, '').toLowerCase();
-      const cssFile = fileMap.get(cleanHref) || fileMap.get(href.toLowerCase());
+      const cssFile = findProjectFile(href, currentHtmlPath, files);
       if (cssFile) {
         const styleTag = doc.createElement('style');
         styleTag.setAttribute('data-vwe-inlined-from', href);
-        styleTag.textContent = cssFile.content;
+        styleTag.textContent = resolveCssUrls(cssFile.content, cssFile.path, files);
         link.parentNode?.replaceChild(styleTag, link);
       }
     }
   }
 
-  // 2. Resolve image sources: <img src="...">, <source srcset="...">
-  const imgElements = Array.from(doc.querySelectorAll('img, source, image'));
-  for (const el of imgElements) {
-    const src = el.getAttribute('src');
-    if (src && !src.startsWith('data:') && !src.startsWith('http://') && !src.startsWith('https://')) {
-      const cleanSrc = src.split('?')[0].replace(/^\.?\//, '').toLowerCase();
-      const assetFile = fileMap.get(cleanSrc) || fileMap.get(src.toLowerCase());
+  // 2. Resolve url() inside existing inline <style> tags
+  const existingStyles = Array.from(doc.querySelectorAll('style:not([data-vwe-inlined-from])'));
+  for (const styleTag of existingStyles) {
+    if (styleTag.textContent) {
+      styleTag.textContent = resolveCssUrls(styleTag.textContent, currentHtmlPath, files);
+    }
+  }
+
+  // 3. Resolve inline style="..." attributes containing url(...)
+  const elementsWithStyle = Array.from(doc.querySelectorAll('[style*="url("]'));
+  for (const el of elementsWithStyle) {
+    const inlineStyle = el.getAttribute('style');
+    if (inlineStyle) {
+      el.setAttribute('style', resolveCssUrls(inlineStyle, currentHtmlPath, files));
+    }
+  }
+
+  // 4. Resolve image and media sources: <img src="...">, <source src/srcset="...">, <video src="...">, <audio src="...">
+  const mediaElements = Array.from(doc.querySelectorAll('img, source, image, video, audio'));
+  for (const el of mediaElements) {
+    const src = el.getAttribute('src') || el.getAttribute('xlink:href');
+    if (src && !src.startsWith('data:') && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('//')) {
+      const assetFile = findProjectFile(src, currentHtmlPath, files);
       if (assetFile) {
-        el.setAttribute('src', assetFile.content); // data URL or blobUrl
+        if (el.tagName.toLowerCase() === 'image') {
+          el.setAttribute('href', assetFile.content);
+        } else {
+          el.setAttribute('src', assetFile.content);
+        }
         el.setAttribute('data-vwe-original-src', src);
       }
     }
-  }
 
-  // 3. Resolve scripts: <script src="...">
-  const scriptElements = Array.from(doc.querySelectorAll('script[src]'));
-  for (const s of scriptElements) {
-    const src = s.getAttribute('src');
-    if (src && !src.startsWith('http://') && !src.startsWith('https://')) {
-      const cleanSrc = src.split('?')[0].replace(/^\.?\//, '').toLowerCase();
-      const jsFile = fileMap.get(cleanSrc) || fileMap.get(src.toLowerCase());
-      if (jsFile) {
-        s.removeAttribute('src');
-        s.setAttribute('data-vwe-inlined-script', src);
-        s.textContent = jsFile.content;
+    // Handle poster for video
+    const poster = el.getAttribute('poster');
+    if (poster && !poster.startsWith('data:') && !poster.startsWith('http://') && !poster.startsWith('https://')) {
+      const posterFile = findProjectFile(poster, currentHtmlPath, files);
+      if (posterFile) {
+        el.setAttribute('poster', posterFile.content);
       }
     }
   }
 
-  // 4. Assign unique data-vwe-id to every body element for direct referencing
+  // 5. Resolve icons / favicons in <head>
+  const iconLinks = Array.from(doc.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'));
+  for (const iconLink of iconLinks) {
+    const href = iconLink.getAttribute('href');
+    if (href && !href.startsWith('data:') && !href.startsWith('http://') && !href.startsWith('https://')) {
+      const iconFile = findProjectFile(href, currentHtmlPath, files);
+      if (iconFile) {
+        iconLink.setAttribute('href', iconFile.content);
+      }
+    }
+  }
+
+  // 6. Resolve scripts: <script src="...">
+  const scriptElements = Array.from(doc.querySelectorAll('script[src]'));
+  for (const s of scriptElements) {
+    const src = s.getAttribute('src');
+    if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('//')) {
+      const jsFile = findProjectFile(src, currentHtmlPath, files);
+      if (jsFile) {
+        s.removeAttribute('src');
+        s.setAttribute('data-vwe-inlined-script', src);
+        s.textContent = `
+try {
+${jsFile.content}
+} catch (e) {
+  console.warn('Script [${src}] error:', e);
+}
+`;
+      }
+    }
+  }
+
+  // 7. Assign unique data-vwe-id to every body element for direct referencing
   let counter = 1;
   const walk = (node: Element) => {
     node.setAttribute('data-vwe-id', `vwe-${counter++}`);
@@ -418,9 +586,32 @@ export function preparePreviewHtml(htmlContent: string, files: ProjectFile[]): s
     }
   }, true);
 
-  // Click handler to select element
+  // Click handler to select element or navigate in live mode
   document.addEventListener('click', function(e) {
-    if (!isInspectorActive) return;
+    if (!isInspectorActive) {
+      // In Live Mode: Intercept internal navigation links (e.g. href="about.html")
+      var link = e.target && e.target.closest ? e.target.closest('a') : null;
+      if (link) {
+        var href = link.getAttribute('href');
+        if (
+          href &&
+          !href.startsWith('#') &&
+          !href.startsWith('http://') &&
+          !href.startsWith('https://') &&
+          !href.startsWith('//') &&
+          !href.startsWith('mailto:') &&
+          !href.startsWith('tel:') &&
+          !href.startsWith('javascript:')
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.parent.postMessage({ type: 'VWE_NAVIGATE_PAGE', href: href }, '*');
+          return;
+        }
+      }
+      return;
+    }
+
     var target = e.target;
     if (target && target.id && target.id.startsWith('vwe-')) return;
 
@@ -658,7 +849,32 @@ export function preparePreviewHtml(htmlContent: string, files: ProjectFile[]): s
     var insScript = clone.querySelector('#vwe-inspector-script');
     if (insScript) insScript.remove();
 
-    // Remove data-vwe-id attributes
+    // Restore inlined CSS links back to <link rel="stylesheet" href="...">
+    var inlinedStyles = clone.querySelectorAll('style[data-vwe-inlined-from]');
+    for (var sIdx = 0; sIdx < inlinedStyles.length; sIdx++) {
+      var sNode = inlinedStyles[sIdx];
+      var origHref = sNode.getAttribute('data-vwe-inlined-from');
+      var linkTag = document.createElement('link');
+      linkTag.setAttribute('rel', 'stylesheet');
+      linkTag.setAttribute('href', origHref);
+      if (sNode.parentNode) {
+        sNode.parentNode.replaceChild(linkTag, sNode);
+      }
+    }
+
+    // Restore inlined scripts back to <script src="...">
+    var inlinedScripts = clone.querySelectorAll('script[data-vwe-inlined-script]');
+    for (var scIdx = 0; scIdx < inlinedScripts.length; scIdx++) {
+      var scNode = inlinedScripts[scIdx];
+      var origSrc = scNode.getAttribute('data-vwe-inlined-script');
+      var scriptTag = document.createElement('script');
+      scriptTag.setAttribute('src', origSrc);
+      if (scNode.parentNode) {
+        scNode.parentNode.replaceChild(scriptTag, scNode);
+      }
+    }
+
+    // Remove data-vwe-id attributes and restore original src
     var all = clone.querySelectorAll('*');
     for (var i = 0; i < all.length; i++) {
       all[i].removeAttribute('data-vwe-id');

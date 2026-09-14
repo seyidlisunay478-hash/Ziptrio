@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
 import {
-  Upload,
   FileArchive,
   Sparkles,
   Layers,
@@ -13,7 +12,7 @@ import {
   X,
   MapPin,
 } from 'lucide-react';
-import { SAMPLE_PROJECTS } from '../utils/sampleProjects';
+import { getSampleProjects } from '../utils/sampleProjects';
 import { useLanguage } from '../utils/LanguageContext';
 import { SUPPORTED_LANGUAGES, getLanguageMeta } from '../utils/languages';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -171,9 +170,13 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
       />
 
       <div className="w-full max-w-xl bg-white border border-slate-200/90 rounded-[28px] sm:rounded-[36px] shadow-xl shadow-slate-200/50 p-5 sm:p-8 md:p-10 text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-200 my-auto">
-        {/* Cute Glowing Icon Badge */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/25 mb-4 sm:mb-5">
-          <Upload className="w-8 h-8 sm:w-10 sm:h-10" />
+        {/* ZipTrio Brand Logo */}
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl overflow-hidden shadow-xl shadow-indigo-500/25 mb-4 sm:mb-5 transition-transform hover:scale-105 select-none">
+          <img
+            src="/icon.svg"
+            alt="ZipTrio Logo"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         {/* Brand Tag */}
@@ -236,7 +239,7 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {SAMPLE_PROJECTS.map((sample) => (
+            {getSampleProjects(lang).map((sample) => (
               <button
                 key={sample.id}
                 onClick={() => onLoadSample(sample.id)}
@@ -244,18 +247,10 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
               >
                 <div>
                   <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition">
-                    {lang === 'us' && sample.id === 'startup'
-                      ? 'Modern Startup Landing Page'
-                      : lang === 'us' && sample.id === 'portfolio'
-                      ? 'Minimalist Portfolio & Resume'
-                      : sample.name}
+                    {sample.name}
                   </div>
                   <div className="text-[10px] text-slate-400 line-clamp-1">
-                    {lang === 'us' && sample.id === 'startup'
-                      ? 'Multi-file modern website with HTML, CSS and interactive JS.'
-                      : lang === 'us' && sample.id === 'portfolio'
-                      ? 'Clean, responsive personal portfolio with dark mode & cards.'
-                      : sample.description}
+                    {sample.description}
                   </div>
                 </div>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition shrink-0 ml-1.5" />

@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { DeviceViewport, ProjectFile } from '../types';
-import { SAMPLE_PROJECTS } from '../utils/sampleProjects';
+import { getSampleProjects } from '../utils/sampleProjects';
 import { useLanguage } from '../utils/LanguageContext';
 import { SUPPORTED_LANGUAGES, getLanguageMeta } from '../utils/languages';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -37,6 +37,8 @@ interface HeaderProps {
   onUndo: () => void;
   onRedo: () => void;
   activeHtmlName: string;
+  activeHtmlPath?: string;
+  onSelectHtmlFile?: (path: string) => void;
   onResetToUpload: () => void;
   historyIndex?: number;
 }
@@ -54,6 +56,8 @@ export const Header: React.FC<HeaderProps> = ({
   onUndo,
   onRedo,
   activeHtmlName,
+  activeHtmlPath,
+  onSelectHtmlFile,
   onResetToUpload,
   historyIndex = 0,
 }) => {
@@ -61,8 +65,11 @@ export const Header: React.FC<HeaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showSamplesMenu, setShowSamplesMenu] = useState(false);
+  const [showHtmlFilesMenu, setShowHtmlFilesMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [langSearch, setLangSearch] = useState('');
+
+  const htmlFiles = files.filter((f) => f.type === 'html');
 
   const currentMeta = getLanguageMeta(lang);
   const filteredLanguages = SUPPORTED_LANGUAGES.filter((item) => {
@@ -104,8 +111,12 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-2 cursor-pointer group"
           title={t.homeTooltip}
         >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold shadow-sm shadow-blue-500/20 group-hover:scale-105 transition">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl overflow-hidden shadow-sm shadow-indigo-500/20 group-hover:scale-105 transition shrink-0 select-none">
+            <img
+              src="/icon.svg"
+              alt="ZipTrio Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <h1 className="text-xs sm:text-sm font-bold tracking-tight text-slate-900 flex items-center gap-1.5 leading-none">
@@ -158,6 +169,72 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </div>
 
+        {/* Multi-Page ZIP Selector (If project has multiple HTML files) */}
+        {htmlFiles.length > 1 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowHtmlFilesMenu(!showHtmlFilesMenu)}
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200/90 text-xs font-semibold transition active:scale-95 cursor-pointer shadow-2xs"
+              title="Sayfa Değiştir / Switch HTML Page"
+            >
+              <FileCode className="w-3.5 h-3.5 text-blue-600" />
+              <span className="max-w-[80px] sm:max-w-[120px] truncate">{activeHtmlName}</span>
+              <span className="text-[9px] bg-blue-200/80 text-blue-900 px-1 py-0.2 rounded font-mono font-bold">
+                {htmlFiles.length}
+              </span>
+              <ChevronDown className="w-3 h-3 text-blue-500" />
+            </button>
+
+            {showHtmlFilesMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowHtmlFilesMenu(false)}
+                />
+                <div className="absolute left-0 mt-1.5 w-60 sm:w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 flex items-center justify-between">
+                    <span>Proje Sayfaları</span>
+                    <span className="font-mono text-[9px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
+                      {htmlFiles.length} dosya
+                    </span>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto p-1 space-y-0.5">
+                    {htmlFiles.map((hf) => {
+                      const isCurrent = hf.path === activeHtmlPath;
+                      return (
+                        <button
+                          key={hf.path}
+                          onClick={() => {
+                            if (onSelectHtmlFile) onSelectHtmlFile(hf.path);
+                            setShowHtmlFilesMenu(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs transition cursor-pointer ${
+                            isCurrent
+                              ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <FileCode
+                              className={`w-3.5 h-3.5 shrink-0 ${
+                                isCurrent ? 'text-blue-600' : 'text-slate-400'
+                              }`}
+                            />
+                            <span className="truncate">{hf.path}</span>
+                          </div>
+                          {isCurrent && (
+                            <Check className="w-3.5 h-3.5 text-blue-600 shrink-0 ml-1.5" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Upload & Samples buttons on desktop */}
         <div className="hidden lg:flex items-center gap-1.5 ml-1">
           <button
@@ -186,7 +263,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                   {t.samplesHeader}
                 </div>
-                {SAMPLE_PROJECTS.map((sample) => (
+                {getSampleProjects(lang).map((sample) => (
                   <button
                     key={sample.id}
                     onClick={() => {

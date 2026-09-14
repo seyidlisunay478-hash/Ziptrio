@@ -15,12 +15,15 @@ import {
   preparePreviewHtml,
   extractClassesAndRules,
   cleanHtmlForExport,
+  findProjectFile,
 } from './utils/htmlParser';
-import { SAMPLE_PROJECTS } from './utils/sampleProjects';
+import { getSampleProjects } from './utils/sampleProjects';
+import { useLanguage } from './utils/LanguageContext';
 import { Sparkles, X, Check, Sliders, ArrowUp, ArrowDown, Copy, Trash2 } from 'lucide-react';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
+  const { t, lang } = useLanguage();
   // State: whether we are on the initial upload screen or full-screen preview
   const [hasLoadedProject, setHasLoadedProject] = useState<boolean>(false);
 
@@ -84,7 +87,7 @@ export default function App() {
       setAllClassNames(extractedClasses);
       setCssRules(rules);
 
-      const processed = preparePreviewHtml(htmlFile.content, currentFiles);
+      const processed = preparePreviewHtml(htmlFile.content, currentFiles, htmlFile.path);
       setPreviewHtml(processed);
 
       if (addToHistory) {
@@ -132,9 +135,38 @@ export default function App() {
     }
   };
 
-  // Load predefined sample
+  // Switch to another HTML file in the project
+  const handleSelectHtmlFile = (path: string) => {
+    const target = filesRef.current.find((f) => f.path === path && f.type === 'html');
+    if (!target) return;
+    setActiveHtmlPath(path);
+    setSelectedElement(null);
+    setIsInspectorOpen(false);
+
+    historyRef.current = [target.content];
+    historyIndexRef.current = 0;
+    setHistory([target.content]);
+    setHistoryIndex(0);
+    setIframeKey((k) => k + 1);
+
+    refreshPreview(filesRef.current, path, false);
+  };
+
+  // Internal link navigation inside iframe preview
+  const handleNavigatePage = (href: string) => {
+    const targetFile = findProjectFile(href, activeHtmlPath, filesRef.current);
+    if (targetFile && targetFile.type === 'html') {
+      handleSelectHtmlFile(targetFile.path);
+      showToast(`${targetFile.name} sayfasına geçildi`);
+    } else {
+      showToast(`Sayfa bulunamadı: ${href}`);
+    }
+  };
+
+  // Load predefined sample localized in active language
   const handleLoadSample = (sampleId: string) => {
-    const sample = SAMPLE_PROJECTS.find((s) => s.id === sampleId);
+    const samples = getSampleProjects(lang);
+    const sample = samples.find((s) => s.id === sampleId);
     if (!sample) return;
 
     setFiles(sample.files);
@@ -465,6 +497,8 @@ export default function App() {
             onUndo={handleUndo}
             onRedo={handleRedo}
             activeHtmlName={activeHtmlFile?.name || 'index.html'}
+            activeHtmlPath={activeHtmlPath}
+            onSelectHtmlFile={handleSelectHtmlFile}
             onResetToUpload={() => setHasLoadedProject(false)}
             historyIndex={historyIndex}
           />
@@ -491,6 +525,7 @@ export default function App() {
                 onReload={() => refreshPreview(files, activeHtmlPath, false)}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
+                onNavigatePage={handleNavigatePage}
               />
             </div>
 

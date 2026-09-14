@@ -26,6 +26,7 @@ interface PreviewFrameProps {
   onReload: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onNavigatePage?: (href: string) => void;
   iframeKey?: number;
 }
 
@@ -40,6 +41,7 @@ export const PreviewFrame: React.FC<PreviewFrameProps> = ({
   onReload,
   onUndo,
   onRedo,
+  onNavigatePage,
   iframeKey = 1,
 }) => {
   const { t, lang } = useLanguage();
@@ -56,6 +58,10 @@ export const PreviewFrame: React.FC<PreviewFrameProps> = ({
         onElementDeselect();
       } else if (event.data.type === 'VWE_DOCUMENT_CHANGED') {
         onDocumentChange(event.data.cleanHtml);
+      } else if (event.data.type === 'VWE_NAVIGATE_PAGE') {
+        if (onNavigatePage) {
+          onNavigatePage(event.data.href);
+        }
       } else if (event.data.type === 'VWE_KEY_SHORTCUT') {
         if (event.data.action === 'undo' && onUndo) {
           onUndo();
@@ -67,7 +73,7 @@ export const PreviewFrame: React.FC<PreviewFrameProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onElementSelect, onElementDeselect, onDocumentChange, onUndo, onRedo]);
+  }, [onElementSelect, onElementDeselect, onDocumentChange, onUndo, onRedo, onNavigatePage]);
 
   const toggleLiveClickable = () => {
     const nextState = !isLiveClickable;

@@ -1,4 +1,5 @@
-import { ProjectFile } from '../types';
+import { ProjectFile, Language } from '../types';
+import { TEMPLATE_TRANSLATIONS } from './sampleTranslations';
 
 export interface SampleProject {
   id: string;
@@ -7,122 +8,7 @@ export interface SampleProject {
   files: ProjectFile[];
 }
 
-export const SAMPLE_PROJECTS: SampleProject[] = [
-  {
-    id: 'startup',
-    name: 'Modern Startup Landing Page',
-    description: 'HTML, CSS ve JavaScript içeren çok dosyalı modern web sitesi şablonu.',
-    files: [
-      {
-        name: 'index.html',
-        path: 'index.html',
-        type: 'html',
-        isBinary: false,
-        size: 3200,
-        content: `<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NexusTech - Geleceğin Bulut Çözümleri</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-  <!-- Header / Navigation -->
-  <header class="header">
-    <div class="container nav-wrapper">
-      <a href="#" class="logo">⚡ NexusTech</a>
-      <nav class="nav-menu">
-        <a href="#features" class="nav-link">Özellikler</a>
-        <a href="#pricing" class="nav-link">Fiyatlandırma</a>
-        <a href="#about" class="nav-link">Hakkımızda</a>
-        <button id="cta-header-btn" class="btn btn-primary">Hemen Başla</button>
-      </nav>
-    </div>
-  </header>
-
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="container hero-content">
-      <span class="badge">🚀 Yeni Versiyon 2.0 Yayında</span>
-      <h1 class="hero-title">İşletmenizi Dijital Dünyada Zirveye Taşıyın</h1>
-      <p class="hero-subtitle">
-        Dakikalar içinde yüksek performanslı, modern ve güvenilir bulut altyapısı kurun.
-        Tüm süreçlerinizi tek bir panelden kolayca yönetin.
-      </p>
-      <div class="hero-actions">
-        <button id="main-demo-btn" class="btn btn-primary btn-large">Ücretsiz Dene</button>
-        <button class="btn btn-secondary btn-large">Canlı Tanıtım</button>
-      </div>
-      <div class="counter-box">
-        <span>Tıklama Sayacı: </span>
-        <strong id="click-counter">0</strong>
-      </div>
-    </div>
-  </section>
-
-  <!-- Features Section -->
-  <section id="features" class="features-section">
-    <div class="container">
-      <div class="section-heading">
-        <h2 class="section-title">Neden NexusTech?</h2>
-        <p class="section-desc">En son teknolojiler ile tasarlanmış üstün kabiliyetler</p>
-      </div>
-
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="card-icon">⚡</div>
-          <h3 class="card-title">Işık Hızında Performans</h3>
-          <p class="card-text">Optimize edilmiş kod mimarisi ve küresel CDN desteği ile anında yüklenme hızları.</p>
-        </div>
-
-        <div class="feature-card featured">
-          <div class="card-icon">🛡️</div>
-          <h3 class="card-title">Kurumsal Düzey Güvenlik</h3>
-          <p class="card-text">256-bit uçtan uca şifreleme ve otomatik veri yedekleme ile verileriniz her zaman güvende.</p>
-        </div>
-
-        <div class="feature-card">
-          <div class="card-icon">📊</div>
-          <h3 class="card-title">Gelişmiş Analitik</h3>
-          <p class="card-text">Kullanıcı hareketlerini ve sistem metriklerini gerçek zamanlı detaylı grafiklerle takip edin.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Call to Action Banner -->
-  <section class="cta-section">
-    <div class="container cta-container">
-      <h2 class="cta-title">Hemen Bugün Katılın</h2>
-      <p class="cta-desc">İlk 14 gün tamamen ücretsiz. Kredi kartı gerekmez.</p>
-      <button class="btn btn-white btn-large">Hesap Oluştur</button>
-    </div>
-  </section>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container footer-content">
-      <p class="copyright">© 2026 NexusTech Inc. Tüm hakları saklıdır.</p>
-      <div class="footer-links">
-        <a href="#" class="footer-link">Gizlilik Politikası</a>
-        <a href="#" class="footer-link">Kullanım Şartları</a>
-        <a href="#" class="footer-link">İletişim</a>
-      </div>
-    </div>
-  </footer>
-
-  <script src="js/main.js"></script>
-</body>
-</html>`
-      },
-      {
-        name: 'style.css',
-        path: 'css/style.css',
-        type: 'css',
-        isBinary: false,
-        size: 2600,
-        content: `/* NexusTech Modern Stylesheet */
+const COMMON_STARTUP_CSS = `/* NexusTech Modern Stylesheet */
 :root {
   --primary-color: #2563eb;
   --primary-hover: #1d4ed8;
@@ -250,59 +136,51 @@ body {
 .badge {
   display: inline-block;
   background: #dbeafe;
-  color: #1e40af;
-  padding: 6px 16px;
-  border-radius: 9999px;
+  color: #1d4ed8;
   font-size: 13px;
   font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
   margin-bottom: 20px;
 }
 
 .hero-title {
-  font-size: 46px;
+  font-size: 48px;
   font-weight: 800;
-  color: var(--secondary-color);
   line-height: 1.2;
-  margin-bottom: 18px;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-bottom: 20px;
+  color: var(--secondary-color);
+  letter-spacing: -1px;
 }
 
 .hero-subtitle {
   font-size: 18px;
   color: var(--text-muted);
   max-width: 650px;
-  margin: 0 auto 32px;
+  margin: 0 auto 30px;
 }
 
 .hero-actions {
   display: flex;
-  gap: 16px;
   justify-content: center;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 30px;
 }
 
 .counter-box {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   background: #ffffff;
-  border-radius: 20px;
-  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
   font-size: 14px;
-  color: var(--text-muted);
-}
-
-.counter-box strong {
-  color: var(--primary-color);
-  font-size: 16px;
 }
 
 /* Features */
 .features-section {
   padding: 80px 0;
-  background: #ffffff;
 }
 
 .section-heading {
@@ -312,14 +190,14 @@ body {
 
 .section-title {
   font-size: 32px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--secondary-color);
   margin-bottom: 12px;
 }
 
 .section-desc {
-  font-size: 16px;
   color: var(--text-muted);
+  font-size: 16px;
 }
 
 .features-grid {
@@ -331,19 +209,19 @@ body {
 .feature-card {
   background: var(--card-bg);
   padding: 36px 28px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.3s;
 }
 
 .feature-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px -10px rgba(0,0,0,0.08);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.08);
 }
 
 .feature-card.featured {
   border-color: var(--primary-color);
-  box-shadow: 0 8px 20px -8px rgba(37,99,235,0.2);
+  box-shadow: 0 8px 20px -6px rgba(37, 99, 235, 0.15);
 }
 
 .card-icon {
@@ -426,15 +304,9 @@ body {
     gap: 16px;
     text-align: center;
   }
-}`
-      },
-      {
-        name: 'main.js',
-        path: 'js/main.js',
-        type: 'js',
-        isBinary: false,
-        size: 650,
-        content: `// Interactive button logic for demo
+}`;
+
+const COMMON_STARTUP_JS = `// Interactive button logic for demo
 let clickCount = 0;
 const counterEl = document.getElementById('click-counter');
 const mainBtn = document.getElementById('main-demo-btn');
@@ -453,27 +325,115 @@ if (mainBtn) {
 if (headerBtn) {
   headerBtn.addEventListener('click', increment);
 }
-console.log('NexusTech scripts loaded successfully.');`
-      }
-    ]
-  },
-  {
-    id: 'portfolio',
-    name: 'Tasarımcı Portfolyosu (Portfolio)',
-    description: 'Biyografi, proje kartları ve iletişim butonları içeren temiz kişisel web sitesi.',
-    files: [
-      {
-        name: 'index.html',
-        path: 'index.html',
-        type: 'html',
-        isBinary: false,
-        size: 2100,
-        content: `<!DOCTYPE html>
-<html lang="tr">
+console.log('NexusTech scripts loaded successfully.');`;
+
+export function getSampleProjects(lang: Language = 'tr'): SampleProject[] {
+  const bundle = TEMPLATE_TRANSLATIONS[lang] || TEMPLATE_TRANSLATIONS['tr'];
+  const t1 = bundle.startup;
+  const t2 = bundle.portfolio;
+  const isRtl = lang === 'ar' || lang === 'he';
+  const dirAttr = isRtl ? ' dir="rtl"' : '';
+
+  const startupHtml = `<!DOCTYPE html>
+<html lang="${lang}"${dirAttr}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Can Berk - UI/UX & Web Tasarımcısı</title>
+  <title>${t1.pageTitle}</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header class="header">
+    <div class="container nav-wrapper">
+      <a href="#" class="logo">⚡ NexusTech</a>
+      <nav class="nav-menu">
+        <a href="#features" class="nav-link">${t1.navFeatures}</a>
+        <a href="#pricing" class="nav-link">${t1.navPricing}</a>
+        <a href="#about" class="nav-link">${t1.navAbout}</a>
+        <button id="cta-header-btn" class="btn btn-primary">${t1.navCta}</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-content">
+      <span class="badge">${t1.badge}</span>
+      <h1 class="hero-title">${t1.heroTitle}</h1>
+      <p class="hero-subtitle">${t1.heroSubtitle}</p>
+      <div class="hero-actions">
+        <button id="main-demo-btn" class="btn btn-primary btn-large">${t1.tryFree}</button>
+        <button class="btn btn-secondary btn-large">${t1.liveDemo}</button>
+      </div>
+      <div class="counter-box">
+        <span>${t1.clickCounter}: </span>
+        <strong id="click-counter">0</strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features-section">
+    <div class="container">
+      <div class="section-heading">
+        <h2 class="section-title">${t1.whyTitle}</h2>
+        <p class="section-desc">${t1.whySubtitle}</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="card-icon">⚡</div>
+          <h3 class="card-title">${t1.f1Title}</h3>
+          <p class="card-text">${t1.f1Desc}</p>
+        </div>
+
+        <div class="feature-card featured">
+          <div class="card-icon">🛡️</div>
+          <h3 class="card-title">${t1.f2Title}</h3>
+          <p class="card-text">${t1.f2Desc}</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon">📊</div>
+          <h3 class="card-title">${t1.f3Title}</h3>
+          <p class="card-text">${t1.f3Desc}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Call to Action Banner -->
+  <section class="cta-section">
+    <div class="container cta-container">
+      <h2 class="cta-title">${t1.ctaTitle}</h2>
+      <p class="cta-desc">${t1.ctaDesc}</p>
+      <button class="btn btn-white btn-large">${t1.createAccount}</button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-content">
+      <p class="copyright">${t1.copyright}</p>
+      <div class="footer-links">
+        <a href="#" class="footer-link">${t1.privacy}</a>
+        <a href="#" class="footer-link">${t1.terms}</a>
+        <a href="#" class="footer-link">${t1.contact}</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>`;
+
+  const portfolioHtml = `<!DOCTYPE html>
+<html lang="${lang}"${dirAttr}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${t2.pageTitle}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family: -apple-system, system-ui, sans-serif; }
     body { background: #0f172a; color: #f8fafc; padding: 40px 20px; }
@@ -495,39 +455,82 @@ console.log('NexusTech scripts loaded successfully.');`
 <body>
   <div class="container">
     <div class="avatar-box">🎨</div>
-    <h1 class="name">Can Berk</h1>
-    <p class="role">Kıdemli Ürün Tasarımcısı & Frontend Geliştirici</p>
-    <p class="bio">
-      Kullanıcı odaklı dijital deneyimler, modern web uygulamaları ve etkileyici tasarım sistemleri inşa ediyorum.
-    </p>
+    <h1 class="name">${t2.authorName}</h1>
+    <p class="role">${t2.role}</p>
+    <p class="bio">${t2.bio}</p>
 
-    <h2 class="section-title">Öne Çıkan Projeler</h2>
+    <h2 class="section-title">${t2.projectsTitle}</h2>
     
     <div class="project-card">
-      <h3 class="project-title">⚡ FinTrack Mobil Bankacılık</h3>
+      <h3 class="project-title">${t2.p1Title}</h3>
       <div class="project-tags">
-        <span class="tag">Figma</span>
-        <span class="tag">Design System</span>
-        <span class="tag">iOS</span>
+        ${t2.p1Tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
       </div>
-      <p class="project-desc">50.000+ aktif kullanıcı için modern bütçe takip ve kripto varlık yönetim arayüzü.</p>
+      <p class="project-desc">${t2.p1Desc}</p>
     </div>
 
     <div class="project-card">
-      <h3 class="project-title">🛍️ Aura E-Ticaret Platformu</h3>
+      <h3 class="project-title">${t2.p2Title}</h3>
       <div class="project-tags">
-        <span class="tag">React</span>
-        <span class="tag">Tailwind</span>
-        <span class="tag">Next.js</span>
+        ${t2.p2Tags.map((tag) => `<span class="tag">${tag}</span>`).join('')}
       </div>
-      <p class="project-desc">Yüksek dönüşüm oranlı, minimalist ve hızlı lüks giyim alışveriş platformu.</p>
+      <p class="project-desc">${t2.p2Desc}</p>
     </div>
 
-    <a href="#" class="contact-btn">✉️ İletişime Geç</a>
+    <a href="#" class="contact-btn">${t2.contactBtn}</a>
   </div>
 </body>
-</html>`
-      }
-    ]
-  }
-];
+</html>`;
+
+  return [
+    {
+      id: 'startup',
+      name: t1.name,
+      description: t1.description,
+      files: [
+        {
+          name: 'index.html',
+          path: 'index.html',
+          type: 'html',
+          isBinary: false,
+          size: startupHtml.length,
+          content: startupHtml,
+        },
+        {
+          name: 'style.css',
+          path: 'css/style.css',
+          type: 'css',
+          isBinary: false,
+          size: COMMON_STARTUP_CSS.length,
+          content: COMMON_STARTUP_CSS,
+        },
+        {
+          name: 'main.js',
+          path: 'js/main.js',
+          type: 'js',
+          isBinary: false,
+          size: COMMON_STARTUP_JS.length,
+          content: COMMON_STARTUP_JS,
+        },
+      ],
+    },
+    {
+      id: 'portfolio',
+      name: t2.name,
+      description: t2.description,
+      files: [
+        {
+          name: 'index.html',
+          path: 'index.html',
+          type: 'html',
+          isBinary: false,
+          size: portfolioHtml.length,
+          content: portfolioHtml,
+        },
+      ],
+    },
+  ];
+}
+
+// Backward compatibility export with default Turkish language
+export const SAMPLE_PROJECTS: SampleProject[] = getSampleProjects('tr');

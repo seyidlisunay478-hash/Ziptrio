@@ -47,13 +47,39 @@ export async function parseUploadedFile(file: File): Promise<ProjectFile[]> {
   const loadedZip = await zip.loadAsync(file);
   const projectFiles: ProjectFile[] = [];
 
-  const fileEntries = Object.entries(loadedZip.files);
+  const rawEntries = Object.entries(loadedZip.files);
 
-  for (const [relativePath, zipEntry] of fileEntries) {
-    // Skip directories and system files like __MACOSX or .DS_Store
-    if (zipEntry.dir || relativePath.includes('__MACOSX') || relativePath.includes('.DS_Store')) {
-      continue;
+  // Filter out system files, hidden Mac files, and directory entries
+  const validEntries = rawEntries.filter(([relativePath, zipEntry]) => {
+    const name = relativePath.split('/').pop() || '';
+    return (
+      !zipEntry.dir &&
+      !relativePath.endsWith('/') &&
+      !relativePath.includes('__MACOSX') &&
+      !name.startsWith('._') &&
+      name !== '.DS_Store' &&
+      name !== 'Thumbs.db'
+    );
+  });
+
+  // Detect if all files share a common root directory (e.g. "template-master/...")
+  let commonPrefix = '';
+  if (validEntries.length > 0) {
+    const firstPath = validEntries[0][0];
+    const slashIdx = firstPath.indexOf('/');
+    if (slashIdx !== -1) {
+      const candidate = firstPath.slice(0, slashIdx + 1);
+      const allShare = validEntries.every(([p]) => p.startsWith(candidate));
+      if (allShare) {
+        commonPrefix = candidate;
+      }
     }
+  }
+
+  for (const [rawPath, zipEntry] of validEntries) {
+    // Strip common top-level folder if all files were nested inside it
+    const relativePath = commonPrefix ? rawPath.slice(commonPrefix.length) : rawPath;
+    if (!relativePath) continue;
 
     const { type, isBinary } = getFileType(relativePath);
     const fileNameOnly = relativePath.split('/').pop() || relativePath;
@@ -68,7 +94,7 @@ export async function parseUploadedFile(file: File): Promise<ProjectFile[]> {
       projectFiles.push({
         name: fileNameOnly,
         path: relativePath,
-        content: dataUrl, // used for src replacement
+        content: dataUrl, // used for src replacement and CSS url()
         isBinary: true,
         type: type,
         blobUrl: blobUrl,
@@ -88,10 +114,14 @@ export async function parseUploadedFile(file: File): Promise<ProjectFile[]> {
   }
 
   // Ensure there is at least one HTML file
-  // Sort so index.html comes first
+  // Sort so index.html comes first, followed by other HTML files, then CSS, JS, etc.
   projectFiles.sort((a, b) => {
-    if (a.path.toLowerCase() === 'index.html') return -1;
-    if (b.path.toLowerCase() === 'index.html') return 1;
+    const aPath = a.path.toLowerCase();
+    const bPath = b.path.toLowerCase();
+    if (aPath === 'index.html') return -1;
+    if (bPath === 'index.html') return 1;
+    if (aPath.endsWith('/index.html')) return -1;
+    if (bPath.endsWith('/index.html')) return 1;
     if (a.type === 'html' && b.type !== 'html') return -1;
     if (b.type === 'html' && a.type !== 'html') return 1;
     return a.path.localeCompare(b.path);
