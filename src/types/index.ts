@@ -16,6 +16,7 @@ export interface ParsedElementInfo {
   idAttr: string;
   classList: string[];
   attributes: Record<string, string>;
+  jsEvents?: Record<string, string>;
   textContent: string;
   innerHTML: string;
   outerHTML: string;
@@ -75,7 +76,36 @@ export interface DomTreeNode {
 
 export type DeviceViewport = 'desktop' | 'tablet' | 'mobile';
 
-export type Language = 'tr' | 'us';
+export type Language =
+  | 'tr'
+  | 'az'
+  | 'en'
+  | 'us'
+  | 'de'
+  | 'fr'
+  | 'es'
+  | 'it'
+  | 'pt'
+  | 'ru'
+  | 'ar'
+  | 'ja'
+  | 'ko'
+  | 'zh'
+  | 'nl'
+  | 'pl'
+  | 'uk'
+  | 'sv'
+  | 'no'
+  | 'da'
+  | 'fi'
+  | 'el'
+  | 'cs'
+  | 'ro'
+  | 'hu'
+  | 'hi'
+  | 'id'
+  | 'vi'
+  | 'he';
 
 export interface CssRuleItem {
   selector: string;

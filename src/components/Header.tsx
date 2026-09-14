@@ -13,10 +13,15 @@ import {
   FileCode,
   ChevronDown,
   Globe,
+  Search,
+  Check,
+  MapPin,
+  X,
 } from 'lucide-react';
 import { DeviceViewport, ProjectFile } from '../types';
 import { SAMPLE_PROJECTS } from '../utils/sampleProjects';
 import { useLanguage } from '../utils/LanguageContext';
+import { SUPPORTED_LANGUAGES, getLanguageMeta } from '../utils/languages';
 
 interface HeaderProps {
   files: ProjectFile[];
@@ -51,10 +56,24 @@ export const Header: React.FC<HeaderProps> = ({
   onResetToUpload,
   historyIndex = 0,
 }) => {
-  const { lang, setLang, t } = useLanguage();
+  const { lang, setLang, t, countryCode, isDetecting } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showSamplesMenu, setShowSamplesMenu] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
+
+  const currentMeta = getLanguageMeta(lang);
+  const filteredLanguages = SUPPORTED_LANGUAGES.filter((item) => {
+    const q = langSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      item.code.toLowerCase().includes(q) ||
+      item.name.toLowerCase().includes(q) ||
+      item.nativeName.toLowerCase().includes(q) ||
+      item.country.toLowerCase().includes(q)
+    );
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -229,34 +248,145 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right Controls: Language Selector (/tr, /us) + Mobile upload icon + Download Dropdown */}
+      {/* Right Controls: Language Selector (28 Languages, URL routes /{code}, Country detection) */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Direct Language Switcher (/tr & /us) */}
-        <div className="flex items-center bg-slate-100 p-0.5 sm:p-1 rounded-xl border border-slate-200 shadow-2xs">
+        {/* Language Selector Area */}
+        <div className="relative">
           <button
-            onClick={() => setLang('tr')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${
-              lang === 'tr'
-                ? 'bg-white text-indigo-700 shadow-2xs font-bold border border-slate-200/80'
-                : 'text-slate-500 hover:text-slate-900 bg-transparent'
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-semibold transition active:scale-95 cursor-pointer shadow-2xs ${
+              showLangMenu
+                ? 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-2 ring-indigo-500/20'
+                : 'bg-slate-100/90 hover:bg-slate-200/80 border-slate-200 text-slate-800'
             }`}
-            title="Türkçe sürüm (/tr)"
+            title="Dili Değiştir / Select Language"
           >
-            <span className="text-xs leading-none">🇹🇷</span>
-            <span className="text-[11px] tracking-tight">TR</span>
+            <span className="text-sm leading-none">{currentMeta.flag}</span>
+            <span className="text-[11px] font-medium text-slate-700 hidden sm:inline">
+              {currentMeta.nativeName}
+            </span>
+            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-white text-indigo-700 border border-slate-200/80 shadow-2xs">
+              /{currentMeta.code}
+            </span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-500 transition-transform duration-150 ${
+                showLangMenu ? 'rotate-180' : ''
+              }`}
+            />
           </button>
-          <button
-            onClick={() => setLang('us')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${
-              lang === 'us'
-                ? 'bg-white text-indigo-700 shadow-2xs font-bold border border-slate-200/80'
-                : 'text-slate-500 hover:text-slate-900 bg-transparent'
-            }`}
-            title="English version (/us)"
-          >
-            <span className="text-xs leading-none">🇺🇸</span>
-            <span className="text-[11px] tracking-tight">US</span>
-          </button>
+
+          {/* 28 Languages Dropdown Popover */}
+          {showLangMenu && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowLangMenu(false)}
+              />
+
+              <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                {/* Header */}
+                <div className="p-3 bg-slate-50 border-b border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Globe className="w-4 h-4 text-indigo-600" />
+                      <span className="text-xs font-bold text-slate-800">
+                        28 Dil Seçimi / Languages
+                      </span>
+                    </div>
+                    {countryCode && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 flex items-center gap-1 border border-emerald-200">
+                        <MapPin className="w-2.5 h-2.5" />
+                        <span>Ülke: {countryCode}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                    <input
+                      type="text"
+                      value={langSearch}
+                      onChange={(e) => setLangSearch(e.target.value)}
+                      placeholder="Dil veya ülke ara (az, tr, de, en...)"
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 shadow-2xs"
+                      autoFocus
+                    />
+                    {langSearch && (
+                      <button
+                        onClick={() => setLangSearch('')}
+                        className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Language items list */}
+                <div className="max-h-72 overflow-y-auto p-1.5 space-y-0.5">
+                  {filteredLanguages.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-slate-400">
+                      Dil bulunamadı.
+                    </div>
+                  ) : (
+                    filteredLanguages.map((item) => {
+                      const isActive =
+                        lang === item.code || (item.code === 'en' && lang === 'us');
+
+                      return (
+                        <button
+                          key={item.code}
+                          onClick={() => {
+                            setLang(item.code);
+                            setShowLangMenu(false);
+                            setLangSearch('');
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left text-xs transition cursor-pointer ${
+                            isActive
+                              ? 'bg-indigo-50 text-indigo-950 font-bold border border-indigo-200/80'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <span className="text-base leading-none shrink-0">{item.flag}</span>
+                            <div className="truncate">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-semibold text-slate-800 truncate">
+                                  {item.nativeName}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  ({item.name})
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                {item.country}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                              /{item.code}
+                            </span>
+                            {isActive && (
+                              <Check className="w-3.5 h-3.5 text-indigo-600" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Footer status */}
+                <div className="p-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 text-center">
+                  Her dil için URL otomatik <code className="font-mono bg-white px-1 py-0.5 rounded border border-slate-200">/{lang}</code> olarak güncellenir.
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Mobile Upload Button */}

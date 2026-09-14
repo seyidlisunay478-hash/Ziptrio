@@ -1,7 +1,21 @@
-import React, { useRef } from 'react';
-import { Upload, FileArchive, Sparkles, Layers, ArrowRight, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import {
+  Upload,
+  FileArchive,
+  Sparkles,
+  Layers,
+  ArrowRight,
+  CheckCircle2,
+  Globe,
+  ChevronDown,
+  Check,
+  Search,
+  X,
+  MapPin,
+} from 'lucide-react';
 import { SAMPLE_PROJECTS } from '../utils/sampleProjects';
 import { useLanguage } from '../utils/LanguageContext';
+import { SUPPORTED_LANGUAGES, getLanguageMeta } from '../utils/languages';
 
 interface UploadHeroProps {
   onFileUpload: (file: File) => void;
@@ -12,8 +26,22 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
   onFileUpload,
   onLoadSample,
 }) => {
-  const { t, lang } = useLanguage();
+  const { t, lang, setLang, countryCode } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showLangMenu, setShowLangMenu] = useState(false);
+  const [langSearch, setLangSearch] = useState('');
+
+  const currentMeta = getLanguageMeta(lang);
+  const filteredLanguages = SUPPORTED_LANGUAGES.filter((item) => {
+    const q = langSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      item.code.toLowerCase().includes(q) ||
+      item.name.toLowerCase().includes(q) ||
+      item.nativeName.toLowerCase().includes(q) ||
+      item.country.toLowerCase().includes(q)
+    );
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,13 +62,101 @@ export const UploadHero: React.FC<UploadHeroProps> = ({
     <div
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
-      className="w-full h-full flex flex-col items-center justify-start sm:justify-center p-3 sm:p-6 bg-slate-50/70 text-slate-900 select-none overflow-y-auto"
+      className="relative w-full h-full flex flex-col items-center justify-start sm:justify-center p-3 sm:p-6 bg-slate-50/70 text-slate-900 select-none overflow-y-auto"
       style={{
         backgroundImage:
           'radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.22) 1px, transparent 0)',
         backgroundSize: '24px 24px',
       }}
     >
+      {/* Top Floating Language Switcher */}
+      <div className="w-full max-w-xl flex items-center justify-between mb-3 px-2">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+          <Globe className="w-3.5 h-3.5 text-indigo-600" />
+          <span>28 Dil Desteği</span>
+          {countryCode && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              📍 {countryCode}
+            </span>
+          )}
+        </div>
+
+        {/* Language selector popover trigger */}
+        <div className="relative">
+          <button
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer ${
+              showLangMenu
+                ? 'bg-indigo-50 border-indigo-300 text-indigo-900 ring-2 ring-indigo-500/20'
+                : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+            }`}
+            title="Dili Değiştir / Select Language"
+          >
+            <span className="text-sm leading-none">{currentMeta.flag}</span>
+            <span className="text-xs font-medium text-slate-700">{currentMeta.nativeName}</span>
+            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+              /{currentMeta.code}
+            </span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${
+                showLangMenu ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {showLangMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)} />
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden text-left animate-in fade-in duration-150">
+                <div className="p-2.5 bg-slate-50 border-b border-slate-100">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                    <input
+                      type="text"
+                      value={langSearch}
+                      onChange={(e) => setLangSearch(e.target.value)}
+                      placeholder="Dil ara (az, tr, en, de...)"
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-7 py-1 text-xs text-slate-900 focus:outline-none focus:border-indigo-500"
+                      autoFocus
+                    />
+                    {langSearch && (
+                      <button
+                        onClick={() => setLangSearch('')}
+                        className="absolute right-2 top-2 p-0.5 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto p-1 space-y-0.5">
+                  {filteredLanguages.map((item) => (
+                    <button
+                      key={item.code}
+                      onClick={() => {
+                        setLang(item.code);
+                        setShowLangMenu(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
+                        lang === item.code ? 'bg-indigo-50 text-indigo-900 font-bold' : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{item.flag}</span>
+                        <span>{item.nativeName}</span>
+                      </span>
+                      <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                        /{item.code}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
       <input
         type="file"
         ref={fileInputRef}

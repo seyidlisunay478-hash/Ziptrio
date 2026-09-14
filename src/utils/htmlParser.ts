@@ -326,10 +326,15 @@ export function preparePreviewHtml(htmlContent: string, files: ProjectFile[]): s
 
     // Attributes
     var attrs = {};
+    var jsEvents = {};
     for (var i = 0; i < el.attributes.length; i++) {
       var attr = el.attributes[i];
       if (!attr.name.startsWith('data-vwe-')) {
         attrs[attr.name] = attr.value;
+        var lowerName = attr.name.toLowerCase();
+        if (lowerName.startsWith('on') || lowerName.startsWith('data-action') || lowerName.startsWith('data-click')) {
+          jsEvents[lowerName] = attr.value;
+        }
       }
     }
 
@@ -348,6 +353,7 @@ export function preparePreviewHtml(htmlContent: string, files: ProjectFile[]): s
       idAttr: el.id || '',
       classList: Array.from(el.classList || []),
       attributes: attrs,
+      jsEvents: jsEvents,
       textContent: el.textContent ? el.textContent.trim() : '',
       innerHTML: el.innerHTML || '',
       outerHTML: el.outerHTML || '',
@@ -601,6 +607,32 @@ export function preparePreviewHtml(htmlContent: string, files: ProjectFile[]): s
           window.scrollBy({ top: 450, behavior: 'smooth' });
         } else if (msg.direction === 'up') {
           window.scrollBy({ top: -450, behavior: 'smooth' });
+        }
+        break;
+      }
+      case 'VWE_EXECUTE_SCRIPT':
+      case 'VWE_RUN_JAVASCRIPT_ON_ELEMENT': {
+        var target = getTarget();
+        if (target) {
+          try {
+            var fn = new Function('element', msg.code);
+            var result = fn.call(target, target);
+            updateSelectedBox(target);
+            notifyDocumentChanged();
+            var data = serializeElement(target);
+            window.parent.postMessage({
+              type: 'VWE_SCRIPT_RESULT',
+              success: true,
+              result: typeof result !== 'undefined' ? String(result) : 'OK',
+              elementData: data
+            }, '*');
+          } catch (err) {
+            window.parent.postMessage({
+              type: 'VWE_SCRIPT_RESULT',
+              success: false,
+              error: err && err.message ? err.message : String(err)
+            }, '*');
+          }
         }
         break;
       }

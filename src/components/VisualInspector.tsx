@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Type,
   Palette,
@@ -18,10 +18,18 @@ import {
   ChevronRight,
   Maximize2,
   Tag,
+  Code2,
+  Play,
+  Zap,
+  FileCode,
+  ExternalLink,
+  Terminal,
+  AlertCircle,
 } from 'lucide-react';
-import { ParsedElementInfo } from '../types';
+import { ParsedElementInfo, ProjectFile } from '../types';
 import { ColorPickerControl } from './ColorPickerControl';
 import { useLanguage } from '../utils/LanguageContext';
+import { findScriptsForElement, EVENT_PRESETS } from '../utils/jsInspector';
 
 interface VisualInspectorProps {
   element: ParsedElementInfo | null;
@@ -35,6 +43,9 @@ interface VisualInspectorProps {
   onMoveElement: (direction: 'up' | 'down') => void;
   onClose: () => void;
   allClassNames: string[];
+  files?: ProjectFile[];
+  onExecuteScript?: (code: string) => void;
+  onOpenFileInEditor?: (filePath: string) => void;
 }
 
 export const VisualInspector: React.FC<VisualInspectorProps> = ({
@@ -48,14 +59,26 @@ export const VisualInspector: React.FC<VisualInspectorProps> = ({
   onMoveElement,
   onClose,
   allClassNames,
+  files = [],
+  onExecuteScript,
+  onOpenFileInEditor,
 }) => {
   const { lang, t } = useLanguage();
-  const isEn = lang === 'us';
+  const isEn = lang === 'us' || lang === 'en';
 
   const [textInput, setTextInput] = useState('');
   const [newClassInput, setNewClassInput] = useState('');
   const [classSuggestions, setClassSuggestions] = useState<string[]>([]);
-  const [activeSection, setActiveSection] = useState<'design' | 'classes' | 'attributes'>('design');
+  const [activeSection, setActiveSection] = useState<'design' | 'classes' | 'attributes' | 'javascript'>('design');
+
+  // JavaScript tab states
+  const [selectedEventName, setSelectedEventName] = useState('onclick');
+  const [newEventCode, setNewEventCode] = useState("this.classList.toggle('active');");
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [liveConsoleCode, setLiveConsoleCode] = useState("this.style.transform = 'scale(1.05)';\nthis.style.transition = 'all 0.3s ease';");
+  const [consoleStatus, setConsoleStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [editingEventName, setEditingEventName] = useState<string | null>(null);
+  const [editingEventValue, setEditingEventValue] = useState<string>('');
 
   useEffect(() => {
     if (element) {
@@ -65,6 +88,24 @@ export const VisualInspector: React.FC<VisualInspectorProps> = ({
   }, [element?.vweId]);
 
   if (!element) return null;
+
+  const scriptMatches = useMemo(() => {
+    return findScriptsForElement(element, files);
+  }, [element, files]);
+
+  const attachedEvents = useMemo(() => {
+    const list: { name: string; value: string }[] = [];
+    if (!element || !element.attributes) return list;
+    for (const [key, val] of Object.entries(element.attributes)) {
+      const lower = key.toLowerCase();
+      if (lower.startsWith('on') || lower.startsWith('data-action') || lower.startsWith('data-click')) {
+        list.push({ name: key, value: String(val ?? '') });
+      }
+    }
+    return list;
+  }, [element?.attributes]);
+
+  const jsBadgeCount = attachedEvents.length + scriptMatches.length;
 
   const cs = element.computedStyle;
 
@@ -274,21 +315,21 @@ export const VisualInspector: React.FC<VisualInspectorProps> = ({
         </div>
       </div>
 
-      {/* Sub-Tabs (Design, Classes, Attributes) */}
-      <div className="flex border-b border-slate-200 bg-white px-2 pt-1">
+      {/* Sub-Tabs (Design, Classes, Attributes, JavaScript) */}
+      <div className="flex border-b border-slate-200 bg-white px-1 pt-1 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveSection('design')}
-          className={`flex-1 py-2 text-xs font-semibold border-b-2 transition cursor-pointer ${
+          className={`flex-1 py-2 px-1 text-center text-xs font-semibold border-b-2 transition cursor-pointer whitespace-nowrap ${
             activeSection === 'design'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          {isEn ? 'Visual CSS & Colors' : 'Görsel CSS & Renkler'}
+          {isEn ? 'CSS & Style' : 'Görsel & CSS'}
         </button>
         <button
           onClick={() => setActiveSection('classes')}
-          className={`flex-1 py-2 text-xs font-semibold border-b-2 transition cursor-pointer ${
+          className={`flex-1 py-2 px-1 text-center text-xs font-semibold border-b-2 transition cursor-pointer whitespace-nowrap ${
             activeSection === 'classes'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -298,13 +339,30 @@ export const VisualInspector: React.FC<VisualInspectorProps> = ({
         </button>
         <button
           onClick={() => setActiveSection('attributes')}
-          className={`flex-1 py-2 text-xs font-semibold border-b-2 transition cursor-pointer ${
+          className={`flex-1 py-2 px-1 text-center text-xs font-semibold border-b-2 transition cursor-pointer whitespace-nowrap ${
             activeSection === 'attributes'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          {isEn ? 'Attributes' : 'Öznitelikler'}
+          {isEn ? 'Attributes' : 'Öznitelik'}
+        </button>
+        <button
+          onClick={() => setActiveSection('javascript')}
+          className={`flex-1 py-2 px-1.5 text-center text-xs font-semibold border-b-2 transition cursor-pointer whitespace-nowrap flex items-center justify-center gap-1 ${
+            activeSection === 'javascript'
+              ? 'border-amber-500 text-amber-600 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+          title={lang === 'az' ? 'Elementin arxasındakı JavaScript' : isEn ? 'JavaScript behind this element' : 'Bu öğenin arkasındaki JavaScript'}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          <span>JavaScript</span>
+          {jsBadgeCount > 0 && (
+            <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              {jsBadgeCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -744,6 +802,429 @@ export const VisualInspector: React.FC<VisualInspectorProps> = ({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* ================= JAVASCRIPT TAB ================= */}
+        {activeSection === 'javascript' && (
+          <div className="space-y-4 text-xs">
+            {/* Header info about target element */}
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 flex items-start gap-2.5">
+              <Code2 className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5 flex-wrap">
+                  <span>{lang === 'az' ? 'Seçilmiş Element:' : isEn ? 'Target Element:' : 'Seçili Öğe:'}</span>
+                  <code className="bg-white px-1.5 py-0.5 rounded border border-amber-200 text-amber-900 font-mono text-[10px]">
+                    &lt;{element.tagName.toLowerCase()}
+                    {element.idAttr ? ` id="${element.idAttr}"` : ''}
+                    {element.classList.length > 0 ? ` class="${element.classList.slice(0, 2).join(' ')}"` : ''}&gt;
+                  </code>
+                </div>
+                <p className="text-[10px] text-slate-600 mt-1 leading-relaxed">
+                  {lang === 'az'
+                    ? 'Bu elementə bağlı JavaScript hadisələrini redaktə edin, layihə skriptlərini görün və ya birbaşa canlı kod işlədin.'
+                    : isEn
+                    ? 'Inspect and edit event listeners attached to this element, view referencing project scripts, or run live JavaScript.'
+                    : 'Bu öğeye bağlı JavaScript olaylarını düzenleyin, sayfadaki JS kodlarını inceleyin veya canlı JavaScript çalıştırın.'}
+                </p>
+              </div>
+            </div>
+
+            {/* SECTION 1: Attached Event Handlers (onclick, onmouseover, etc.) */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  {lang === 'az' ? 'Hadisə Dinləyiciləri' : isEn ? 'Event Handlers' : 'Olay Dinleyicileri'} ({attachedEvents.length})
+                </span>
+                <button
+                  onClick={() => setShowAddEventModal(!showAddEventModal)}
+                  className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>{lang === 'az' ? 'Hadisə Əlavə Et' : isEn ? 'Add Event' : 'Olay Ekle'}</span>
+                </button>
+              </div>
+
+              {/* Creator: Add new event */}
+              {showAddEventModal && (
+                <div className="p-3 bg-white rounded-xl border border-amber-200 shadow-sm space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] text-slate-800">
+                      {lang === 'az' ? 'Yeni Hadisə Seçimi' : isEn ? 'Add New Event Listener' : 'Yeni Olay Tanımla'}
+                    </span>
+                    <button
+                      onClick={() => setShowAddEventModal(false)}
+                      className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Event selector */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-semibold block mb-1">
+                        {lang === 'az' ? 'Hadisə (Event):' : isEn ? 'Event Type:' : 'Olay Türü:'}
+                      </label>
+                      <select
+                        value={selectedEventName}
+                        onChange={(e) => setSelectedEventName(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 font-mono"
+                      >
+                        <option value="onclick">onclick (Tıklama)</option>
+                        <option value="ondblclick">ondblclick (Çift Tıklama)</option>
+                        <option value="onmouseenter">onmouseenter (Üzerine Gelince)</option>
+                        <option value="onmouseleave">onmouseleave (Ayrılınca)</option>
+                        <option value="onchange">onchange (Değer Değişince)</option>
+                        <option value="onsubmit">onsubmit (Form Gönderilince)</option>
+                        <option value="onfocus">onfocus (Odaklanınca)</option>
+                        <option value="onblur">onblur (Odaktan Çıkınca)</option>
+                        <option value="onkeydown">onkeydown (Tuşa Basılınca)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-slate-500 font-semibold block mb-1">
+                        {lang === 'az' ? 'Hazır Şablon:' : isEn ? 'Presets:' : 'Hazır Şablon:'}
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const preset = EVENT_PRESETS.find((p) => p.code === e.target.value);
+                          if (preset) {
+                            setSelectedEventName(preset.event);
+                            setNewEventCode(preset.code);
+                          } else if (e.target.value) {
+                            setNewEventCode(e.target.value);
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>
+                          {lang === 'az' ? 'Şablon seçin...' : isEn ? 'Choose preset...' : 'Şablon seçin...'}
+                        </option>
+                        {EVENT_PRESETS.map((p, idx) => (
+                          <option key={idx} value={p.code}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-semibold block mb-1">
+                      {lang === 'az' ? 'İcra Olunacaq JavaScript Kodu:' : isEn ? 'JavaScript Code to Run:' : 'Çalıştırılacak JavaScript Kodu:'}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={newEventCode}
+                      onChange={(e) => setNewEventCode(e.target.value)}
+                      placeholder="this.classList.toggle('active');"
+                      className="w-full bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg p-2 focus:outline-none border border-slate-800"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => setShowAddEventModal(false)}
+                      className="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                    >
+                      {lang === 'az' ? 'Ləğv et' : isEn ? 'Cancel' : 'İptal'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (selectedEventName.trim() && newEventCode.trim()) {
+                          onUpdateAttribute(selectedEventName.trim(), newEventCode.trim());
+                          setShowAddEventModal(false);
+                        }
+                      }}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-lg shadow-xs cursor-pointer"
+                    >
+                      {lang === 'az' ? 'Elementə Bağla' : isEn ? 'Attach to Element' : 'Öğeye Ekle'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* List of currently attached events */}
+              {attachedEvents.length === 0 ? (
+                <div className="text-center py-4 px-3 bg-white rounded-xl border border-dashed border-slate-200">
+                  <p className="text-xs text-slate-500">
+                    {lang === 'az'
+                      ? 'Bu elementdə hələ inline hadisə (onclick və s.) yoxdur.'
+                      : isEn
+                      ? 'No inline event handlers attached to this element.'
+                      : 'Bu öğede henüz inline olay (onclick vb.) tanımlı değil.'}
+                  </p>
+                  <button
+                    onClick={() => setShowAddEventModal(true)}
+                    className="mt-2 text-xs font-semibold text-amber-600 hover:underline cursor-pointer"
+                  >
+                    + {lang === 'az' ? 'İlk Hadisəni Əlavə Edin' : isEn ? 'Add first event listener' : 'İlk olayı şimdi ekleyin'}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attachedEvents.map(({ name, value }) => {
+                    const isEditing = editingEventName === name;
+                    const currentValue = isEditing ? editingEventValue : value;
+
+                    return (
+                      <div
+                        key={name}
+                        className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs"
+                      >
+                        <div className="bg-slate-100/80 px-3 py-1.5 flex items-center justify-between border-b border-slate-200">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                              {name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {/* Run on element */}
+                            <button
+                              onClick={() => {
+                                if (onExecuteScript) {
+                                  onExecuteScript(currentValue);
+                                }
+                              }}
+                              className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer border border-emerald-200"
+                              title={lang === 'az' ? 'Bu kodu sınaqdan keçir' : isEn ? 'Test run this code' : 'Bu kodu önizlemede test et'}
+                            >
+                              <Play className="w-2.5 h-2.5 fill-emerald-600 text-emerald-600" />
+                              <span>{lang === 'az' ? 'Test Et' : isEn ? 'Test' : 'Test Et'}</span>
+                            </button>
+
+                            {/* Delete event */}
+                            <button
+                              onClick={() => onUpdateAttribute(name, null)}
+                              className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded transition cursor-pointer"
+                              title={lang === 'az' ? 'Hadisəni sil' : isEn ? 'Remove event' : 'Olayı kaldır'}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 space-y-2">
+                          <textarea
+                            rows={2}
+                            value={currentValue}
+                            onChange={(e) => {
+                              setEditingEventName(name);
+                              setEditingEventValue(e.target.value);
+                            }}
+                            className="w-full bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg p-2 focus:outline-none border border-slate-800"
+                          />
+                          {isEditing && (
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => setEditingEventName(null)}
+                                className="px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded cursor-pointer"
+                              >
+                                {lang === 'az' ? 'İmtina' : isEn ? 'Reset' : 'Vazgeç'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  onUpdateAttribute(name, editingEventValue);
+                                  setEditingEventName(null);
+                                }}
+                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-xs cursor-pointer"
+                              >
+                                {lang === 'az' ? 'Yadda Saxla' : isEn ? 'Save' : 'Kaydet'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 2: Project JS Scripts Targeting This Element */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileCode className="w-3.5 h-3.5 text-blue-600" />
+                  {lang === 'az'
+                    ? 'Bu Elementi Hədəfləyən Skriptlər'
+                    : isEn
+                    ? 'Project Scripts Referencing Element'
+                    : 'Öğeyi Hedefleyen JS Kodları'}{' '}
+                  ({scriptMatches.length})
+                </span>
+              </div>
+
+              {scriptMatches.length === 0 ? (
+                <div className="p-3 bg-white rounded-xl border border-slate-200 text-slate-500 text-xs space-y-1">
+                  <p>
+                    {lang === 'az'
+                      ? 'Proyekt fayllarında bu elementin ID və ya sinifini birbaşa seçən JS kodu tapılmadı.'
+                      : isEn
+                      ? 'No project scripts currently reference this element by ID or class.'
+                      : 'Proje JS dosyalarında bu öğenin ID (#id) veya sınıflarını doğrudan seçen bir kural bulunamadı.'}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'az'
+                      ? 'Məsləhət: Yuxarıdakı "Hadisə Əlavə Et" düyməsi ilə elementə dərhal klik və ya animasiya kodu bağlaya bilərsiniz.'
+                      : isEn
+                      ? 'Tip: You can attach event handlers directly using the "Add Event" button above.'
+                      : 'İpucu: Yukarıdaki "Olay Ekle" butonuyla öğeye hemen tıklama kodu veya animasyon ekleyebilirsiniz.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {scriptMatches.map((match, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs"
+                    >
+                      <div className="bg-slate-100/90 px-3 py-1.5 flex items-center justify-between border-b border-slate-200">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <FileCode className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="font-mono text-[11px] font-semibold text-slate-800 truncate">
+                            {match.file}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            :{match.line}
+                          </span>
+                        </div>
+                        {onOpenFileInEditor && (
+                          <button
+                            onClick={() => onOpenFileInEditor(match.file)}
+                            className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer"
+                            title={lang === 'az' ? 'Faylı redaktorda aç' : isEn ? 'Open file in editor' : 'Dosyayı kod editöründe aç'}
+                          >
+                            <span>{lang === 'az' ? 'Redaktorda Aç' : isEn ? 'Open Editor' : 'Editörde Aç'}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="px-3 py-1.5 bg-slate-50/50 border-b border-slate-100">
+                        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          {match.reason}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 bg-slate-950 overflow-x-auto">
+                        <pre className="text-[11px] font-mono text-emerald-400 leading-relaxed">
+                          {match.codeSnippet}
+                        </pre>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 3: Live JavaScript Console & Sandbox */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-indigo-600" />
+                  {lang === 'az' ? 'Canlı JS Sınaq Konsolu' : isEn ? 'Live JS Sandbox' : 'Canlı JS Test Konsolu'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-200/70 px-1.5 py-0.5 rounded">
+                  this = element
+                </span>
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                {lang === 'az'
+                  ? 'Element üzərində anında JavaScript əmrlərini icra edin (`this` seçilmiş elementi göstərir):'
+                  : isEn
+                  ? 'Run real-time JavaScript statements directly on this element (`this` refers to DOM node):'
+                  : 'Bu öğe üzerinde anında JavaScript kodlarını çalıştırın (`this` seçili öğeyi temsil eder):'}
+              </p>
+
+              {/* Quick Snippets */}
+              <div className="flex flex-wrap gap-1">
+                <button
+                  onClick={() =>
+                    setLiveConsoleCode("this.style.color = '#ef4444';\nthis.style.fontWeight = 'bold';")
+                  }
+                  className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 text-[10px] font-mono cursor-pointer"
+                >
+                  Kırmızı Yap
+                </button>
+                <button
+                  onClick={() =>
+                    setLiveConsoleCode(
+                      "this.style.backgroundColor = '#1e293b';\nthis.style.color = '#ffffff';\nthis.style.borderRadius = '12px';"
+                    )
+                  }
+                  className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 text-[10px] font-mono cursor-pointer"
+                >
+                  Koyu Kutu
+                </button>
+                <button
+                  onClick={() =>
+                    setLiveConsoleCode(
+                      "this.style.transform = 'rotate(4deg) scale(1.05)';\nthis.style.transition = 'all 0.3s';"
+                    )
+                  }
+                  className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 text-[10px] font-mono cursor-pointer"
+                >
+                  Döndür & Büyüt
+                </button>
+                <button
+                  onClick={() =>
+                    setLiveConsoleCode("this.classList.toggle('active');")
+                  }
+                  className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 rounded border border-slate-200 text-[10px] font-mono cursor-pointer"
+                >
+                  Toggle Class
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <textarea
+                  rows={3}
+                  value={liveConsoleCode}
+                  onChange={(e) => setLiveConsoleCode(e.target.value)}
+                  placeholder="this.style.transform = 'scale(1.1)';"
+                  className="w-full bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl p-2.5 focus:outline-none border border-slate-800"
+                />
+
+                <button
+                  onClick={() => {
+                    if (onExecuteScript && liveConsoleCode.trim()) {
+                      onExecuteScript(liveConsoleCode.trim());
+                      setConsoleStatus({ ok: true, msg: 'Kod elementdə uğurla icra olundu!' });
+                      setTimeout(() => setConsoleStatus(null), 3000);
+                    }
+                  }}
+                  className="w-full py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-white" />
+                  <span>
+                    {lang === 'az'
+                      ? 'Elementdə Canlı İşlət'
+                      : isEn
+                      ? 'Execute Live on Element'
+                      : 'Elementte Canlı Çalıştır'}
+                  </span>
+                </button>
+
+                {consoleStatus && (
+                  <div
+                    className={`p-2 rounded-lg text-xs font-medium flex items-center gap-1.5 ${
+                      consoleStatus.ok
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{consoleStatus.msg}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

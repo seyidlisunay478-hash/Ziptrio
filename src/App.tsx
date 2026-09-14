@@ -373,6 +373,41 @@ export default function App() {
       name,
       value,
     });
+    setSelectedElement((prev) => {
+      if (!prev) return null;
+      const nextAttrs = { ...prev.attributes };
+      if (value === null || value === '') {
+        delete nextAttrs[name];
+      } else {
+        nextAttrs[name] = value;
+      }
+      return {
+        ...prev,
+        attributes: nextAttrs,
+      };
+    });
+  };
+
+  const handleExecuteScript = (code: string) => {
+    if (!selectedElement) return;
+    sendIframeMessage({
+      type: 'VWE_RUN_JAVASCRIPT_ON_ELEMENT',
+      vweId: selectedElement.vweId,
+      code,
+    });
+    showToast('JavaScript öğede çalıştırıldı');
+  };
+
+  const handleOpenFileInEditor = (filePath: string) => {
+    const file = files.find(
+      (f) => f.path === filePath || f.name === filePath || f.path.endsWith(filePath)
+    );
+    if (file) {
+      setActiveHtmlPath(file.path);
+      showToast(`${file.name} seçildi`);
+    } else {
+      showToast(`${filePath} açıldı`);
+    }
   };
 
   const handleDeleteElement = () => {
@@ -494,6 +529,9 @@ export default function App() {
                     onMoveElement={handleMoveElement}
                     onClose={() => setIsInspectorOpen(false)}
                     allClassNames={allClassNames}
+                    files={files}
+                    onExecuteScript={handleExecuteScript}
+                    onOpenFileInEditor={handleOpenFileInEditor}
                   />
                 </div>
 
@@ -519,6 +557,9 @@ export default function App() {
                       onMoveElement={handleMoveElement}
                       onClose={() => setIsInspectorOpen(false)}
                       allClassNames={allClassNames}
+                      files={files}
+                      onExecuteScript={handleExecuteScript}
+                      onOpenFileInEditor={handleOpenFileInEditor}
                     />
                   </div>
                 </div>
